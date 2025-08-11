@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Clock</title>
+    <style>
+        body {
+            background: linear-gradient(to right, #ffecd2 0%, #fcb69f 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .container {
+            height: 460px;
+            width: 320px;
+            background-color: #4d4d4d;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            color: white;
+            padding: 15px;
+        }
+        .timer-display-wrapper {
+            flex: 1.2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background-color: #333;
+            border-radius: 15px;
+            margin-bottom: 15px;
+        }
+        .progress-ring {
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            border-radius: 15px;
+            background: conic-gradient(#00bcd4 0%, #333 0%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .timer-display {
+            width: calc(100% - 10px);
+            height: calc(100% - 10px);
+            background: #e0e0e0;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        #time-left {
+            font-size: 4.5rem;
+            font-weight: bold;
+            color: #00bcd4;
+        }
+        .controls {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            padding: 0 10px 10px;
+        }
+        #timer-label {
+            font-size: 1.5rem;
+            letter-spacing: 1px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .divider {
+            border-bottom: 1px dotted rgba(255, 255, 255, 0.3);
+            margin: 10px 0;
+        }
+        .time-setter {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+        .setter-group {
+            text-align: center;
+        }
+        .setter-group h2 {
+            font-size: 0.9rem;
+            font-weight: normal;
+            margin-bottom: 8px;
+            text-transform: capitalize;
+        }
+        .setter-group .time {
+            font-size: 1.4rem;
+            color: #00bcd4;
+        }
+        .setter-group button {
+            background: #333;
+            border: none;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin: 0 5px;
+            transition: background-color 0.2s;
+        }
+        .setter-group button:hover {
+            background-color: #555;
+        }
+        .setter-group button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .main-controls {
+            display: flex;
+            justify-content: space-around;
+        }
+        .main-controls button {
+            background-color: #333;
+            color: white;
+            border: none;
+            width: 100px;
+            padding: 12px 0;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .main-controls button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="timer-display-wrapper">
+            <div class="progress-ring">
+                <div class="timer-display">
+                    <h1 id="timer-label">Session 1</h1>
+                    <div id="time-left">25:00</div>
+                </div>
+            </div>
+        </div>
+        <div class="controls">
+            <div class="divider"></div>
+            <div class="time-setter">
+                <div class="setter-group">
+                    <h2>session time</h2>
+                    <div>
+                        <button id="session-decrement" class="time-control">-</button>
+                        <span id="session-length" class="time">25</span>
+                        <button id="session-increment" class="time-control">+</button>
+                    </div>
+                </div>
+                <div class="setter-group">
+                    <h2>break time</h2>
+                    <div>
+                        <button id="break-decrement" class="time-control">-</button>
+                        <span id="break-length" class="time">5</span>
+                        <button id="break-increment" class="time-control">+</button>
+                    </div>
+                </div>
+            </div>
+            <div class="divider"></div>
+            <div class="main-controls">
+                <button id="start_stop">Start</button>
+                <button id="reset">Reset</button>
+            </div>
+        </div>
+    </div>
+    <audio id="beep" src="https://www.soundjay.com/buttons/beep-07a.wav" preload="auto"></audio>
+
+    <script>
+        let sessionLength = 25;
+        let breakLength = 5;
+        let timeLeft;
+        let totalTime;
+        let isRunning = false;
+        let isSession = true;
+        let timer;
+        let sessionCount = 1;
+
+        const timerLabel = document.getElementById('timer-label');
+        const timeLeftDisplay = document.getElementById('time-left');
+        const startStopBtn = document.getElementById('start_stop');
+        const resetBtn = document.getElementById('reset');
+        const sessionLengthDisplay = document.getElementById('session-length');
+        const breakLengthDisplay = document.getElementById('break-length');
+        const sessionDecrement = document.getElementById('session-decrement');
+        const sessionIncrement = document.getElementById('session-increment');
+        const breakDecrement = document.getElementById('break-decrement');
+        const breakIncrement = document.getElementById('break-increment');
+        const timeControls = document.querySelectorAll('.time-control');
+        const beep = document.getElementById('beep');
+        const progressRing = document.querySelector('.progress-ring');
+
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timeLeftDisplay.textContent = `${minutes < 10 ? '0' : ''}${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+            
+            const progress = (timeLeft / totalTime) * 100;
+            const color = isSession ? '#00bcd4' : '#ff6347';
+            progressRing.style.background = `conic-gradient(${color} ${progress}%, #333 ${progress}%)`;
+            timeLeftDisplay.style.color = color;
+        }
+
+        function startNewPhase(session) {
+            isSession = session;
+            if (isSession) {
+                timerLabel.textContent = `Session ${sessionCount}`;
+                timeLeft = sessionLength * 60;
+                totalTime = sessionLength * 60;
+            } else {
+                timerLabel.textContent = 'Break!';
+                timeLeft = breakLength * 60;
+                totalTime = breakLength * 60;
+                sessionCount++;
+            }
+            updateDisplay();
+        }
+
+        function toggleTimer() {
+            if (isRunning) {
+                clearInterval(timer);
+                isRunning = false;
+                startStopBtn.textContent = 'Start';
+                toggleTimeControls(false);
+            } else {
+                isRunning = true;
+                startStopBtn.textContent = 'Pause';
+                toggleTimeControls(true);
+                timer = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft < 0) {
+                        beep.play();
+                        startNewPhase(!isSession);
+                    }
+                    updateDisplay();
+                }, 1000);
+            }
+        }
+        
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            sessionLength = 25;
+            breakLength = 5;
+            sessionCount = 1;
+            sessionLengthDisplay.textContent = sessionLength;
+            breakLengthDisplay.textContent = breakLength;
+            startStopBtn.textContent = 'Start';
+            toggleTimeControls(false);
+            startNewPhase(true);
+        }
+
+        function changeTime(type, amount) {
+            if (isRunning) return;
+            if (type === 'session') {
+                sessionLength += amount;
+                if (sessionLength < 1) sessionLength = 1;
+                sessionLengthDisplay.textContent = sessionLength;
+            } else {
+                breakLength += amount;
+                if (breakLength < 1) breakLength = 1;
+                breakLengthDisplay.textContent = breakLength;
+            }
+            startNewPhase(isSession);
+        }
+
+        function toggleTimeControls(disabled) {
+            timeControls.forEach(button => button.disabled = disabled);
+        }
+
+        startStopBtn.addEventListener('click', toggleTimer);
+        resetBtn.addEventListener('click', resetTimer);
+        sessionDecrement.addEventListener('click', () => changeTime('session', -1));
+        sessionIncrement.addEventListener('click', () => changeTime('session', 1));
+        breakDecrement.addEventListener('click', () => changeTime('break', -1));
+        breakIncrement.addEventListener('click', () => changeTime('break', 1));
+
+        resetTimer();
+    </script>
+
+</body>
+</html>
